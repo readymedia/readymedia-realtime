@@ -1,8 +1,0 @@
-Dato og tid: 14. november 2025 kl. 21:51:46
-Språk: Norsk
-
-This transcript is made using ReadyMedia Realtime, get more info at http://readymedia.no/realtime
-
----
-
-Da tester vi igjen, og så ser vi om selve tekstingen og tekstmotoren funker i hvert fall. Fullskjermen funker. Clear funker ikke akkurat nå, men Light Team funker. Light Team. Ja, og Chroma Key. Ja. Dark Team. End spacing. Ja. Alt det funker. Og så har vi Captions L Over. Men den er 17, så skal jeg 1, 2, 3, 1, 2, 3. Altså går det i fullskjerm. Fullskjerm. Captions Lower. Så fullskjerm. Da burde den ha holdt seg nedpå der, men den jobber seg oppover igjen. Så det er jo noe rart der. Teksten skal jo bare legge seg nedpå her i de tilfellene her, og så skal de bare endre. Så kanskje bare to linjer. Captions Lower. Captions Low

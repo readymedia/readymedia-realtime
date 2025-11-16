@@ -1,8 +1,0 @@
-Dato og tid: 16. november 2025 kl. 11:12:37
-Språk: Norsk
-
-This transcript is made using ReadyMedia Realtime, get more info at http://readymedia.no/realtime
-
----
-
-Ja, da tester vi litt tale igjen her. Vi har egentlig valgt engelsk, men det kommer jo på norsk siden jeg snakker på norsk. Ikke sikkert at det er helt sånn som vi vil ha det, men det er greit. Nå er vi på den Fullscreen Long, som også har muligheten til å ha mye tekst. Så her må vi ha god lesbarhet og litt mer linjeavstand, tenker jeg. Sånn. Og så må vi ha Large, kanskje. En, to, tre, fire, fem, seks. Sånn. Full screen. Ja, nå ser vi jo nederst, så oppdaterer tekstene seg, og den begynner så å scrolle etter hvert når den kommer utover det som er behovet. Sånn at nå er vi på en, to, tre, fire, fem, seks, sju, åtte, ni, ti, elleve. Elleve linjer, så holder den på å fortsatt å hoppe. Tolvte linjer, da begynner den å scrolle. Skal vi se at den fortsetter å scrolle nedover når vi ... Det gjør den, så teksten fortsetter bare oppover. Så da er det jo derfor så vidt ganske greit. Jeg tror kanskje vi må ... Få til et eller annet som gjør at teksten som er gått ut, fortsatt er grå. Sånn at den bare har litt bedre indikasjon på det. Nå virker det som at den fortsatte uten å restarte, sånn at vi har et eller annet skript til det. Det er jo behavior som vi vil ha. Sånn ser det ikke riktig ut. Kanskje er det litt stort. Jeg tror vi prøver det sånn. Og så ... Ja, vi kan kanskje gå ned litt på tekstet, eller så skal vi gå ned på 52. Så har vi ... ... spesialisering der. Roboto Open ... Ja, jeg synes kanskje det var greit å ha noe sånt. Så tror vi prøver Roboto på den der. Så da ser vi at vi skal ha ... Det skal være tekst Roboto. Roboto. Roboto. Roboto. Roboto. Roboto. Roboto. Rob

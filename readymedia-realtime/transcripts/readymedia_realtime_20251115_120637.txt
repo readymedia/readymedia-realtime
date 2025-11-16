@@ -1,8 +1,0 @@
-Dato og tid: 15. november 2025 kl. 12:06:37
-Språk: Norsk
-
-This transcript is made using ReadyMedia Realtime, get more info at http://readymedia.no/realtime
-
----
-
-Nå er språket satt til norsk, og jeg snakker norsk. Det ser ut som det blir ganske bra. Jeg snakker også på ganske bra trøndersk dialekt, og den klarer å detektere det ganske bra. Now I have changed into English, and I'm speaking English currently. It's detecting that I'm speaking English. But now I actually want this to be in Norwegian, even though I'm speaking English. Jeg er ved å fylle skjermen kort. Ved å fylle skjermen. Så Hvis jeg velger den lange. Så det er kontinuerlig prøve å endre det. Og dette bør nok også være bredere. Men det er

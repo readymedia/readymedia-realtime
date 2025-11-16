@@ -1,8 +1,0 @@
-Dato og tid: 14. november 2025 kl. 21:37:23
-Språk: Norsk
-
-This transcript is made using ReadyMedia Realtime, get more info at http://readymedia.no/realtime
-
----
-
-Hei, det ser jo faktisk ut som at det funker. Det er kanskje litt stor tekst akkurat nå, og så flytter linjen seg opp. Det er litt usikkert, men nå har vi fire linjer. 1, 2, 3, 4, 5, 6, 7. 1, 2, 3, 4, 5, 6. Det var en gang en liten kar som skulle ut å gå, men det ser ut som den lower captionsen flytter seg oppover uansett. Hvis vi setter på lower line spacing, for den skal jo ikke gjøre det den lower captions. Hvis jeg går til full screen short, 2, 3. Nå er den nye teksten øverst, og alt er på en måte hvitt. Det er jo litt rart, så den lager fortsatt en bulk, og så flytter teksten seg oppover. Og nå har jeg også mistet den scroller bar som jeg hadde. Så dette er jo ikke optimalt. Full screen short, full screen long. Full screen funker fortsatt. Så må jeg så klart være her da, for at det skal gi mening på den full screen long. Og så så vi en forskjell. Nå er jo all teksten hvit også, så den teksten som har gått ut, den er jo ikke grå lenger. Men det er sikkert jeg har så mye å si når jeg trykker inn og ut her, og om jeg nå går tilbake til chroma key og trykker full screen igjen, så har jeg jo en svær bulk. Men jeg skjønner ikke hvorfor den skal på en måte ha kommet der, og så kommer det jo noen rart med tekst visningen i forhold til hvordan teksten kommer, hvor og hvorfor. Jeg er litt usikker på hvordan jeg skal forklare det. Jeg må kanskje gjøre et videoopptak også. Dark theme funker, light theme funker, knappene funker. Jeg måtte bare kjøre en sånn refresh på knappen der faktisk. Jeg trodde jeg hadde ødelagt hele greia nå. Men det er noe rart med hvordan den bryter teksten.

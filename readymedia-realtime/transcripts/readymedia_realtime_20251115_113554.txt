@@ -1,8 +1,0 @@
-Dato og tid: 15. november 2025 kl. 11:35:54
-Språk: Norsk
-
-This transcript is made using ReadyMedia Realtime, get more info at http://readymedia.no/realtime
-
----
-
-Ja, nå snakker jeg på norsk, og da burde det egentlig ha blitt oversatt til engelsk, men det er det ikke. For if I change my language to English, now it will be interpreted as English. So currently it seems to be auto-detect. It's not choosing the language that I have chosen. Hva er det som skjer?

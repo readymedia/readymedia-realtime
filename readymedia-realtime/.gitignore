@@ -31,8 +31,14 @@ build/
 tmp/
 temp/
 
-# Transcripts (optional - remove if you want to commit them)
+# Transcripts - should not be committed
 transcripts/
+**/transcripts/
+
+# Backup folders
+Backup/
+**/Backup/
+*.code-workspace
 
 # Vercel
 .vercel
