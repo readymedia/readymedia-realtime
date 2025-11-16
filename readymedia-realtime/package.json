@@ -1,0 +1,8 @@
+{
+  "name": "readymedia-realtime",
+  "version": "7.1.0",
+  "type": "module",
+  "description": "ReadyMedia Realtime - WebSocket-based realtime transcription using ElevenLabs Scribe v2",
+  "private": true
+}
+
