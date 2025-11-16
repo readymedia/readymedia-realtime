@@ -8,11 +8,25 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Parse request body if it's a string (Vercel ESM may not auto-parse)
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        console.error('Failed to parse request body:', e);
+        return res.status(400).json({ error: 'Invalid JSON in request body' });
+      }
+    }
+    
     // Accept API key from request body (for user-provided keys) or use environment variable
-    const apiKey = req.body.apiKey || process.env.ELEVENLABS_API_KEY;
+    const apiKey = body?.apiKey || process.env.ELEVENLABS_API_KEY;
     
     if (!apiKey) {
-      console.error('❌ ELEVENLABS_API_KEY is not set');
+      console.error('❌ API key not found');
+      console.error('   Request body:', JSON.stringify(body));
+      console.error('   Body type:', typeof body);
+      console.error('   Environment variable set:', !!process.env.ELEVENLABS_API_KEY);
       return res.status(500).json({ 
         error: 'API key not provided. Please provide an API key in the request or set ELEVENLABS_API_KEY in your Vercel environment variables.' 
       });
