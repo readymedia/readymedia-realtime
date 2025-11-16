@@ -1,4 +1,4 @@
-# 🎙️ ReadyMedia Realtime v6.0.0
+# 🎙️ ReadyMedia Realtime v7.1
 
 **Universell sanntidsteksting for undervisningsrom**
 
@@ -7,13 +7,16 @@ En nettbasert løsning for automatisk sanntidsteksting av tale i klasserom, audi
 ## ✨ Funksjoner
 
 - 🎤 **Sanntidstranskripsjon** med under 250ms latency
+- 🔑 **Bruker-spesifikk API-nøkkel**: Hver bruker kan bruke sin egen ElevenLabs API-nøkkel
+- 📄 **Lokal transcript-lagring**: Alle transcripts lagres lokalt i nettleseren (IndexedDB)
 - 🌍 **Språkvalg**: Velg mellom norsk, engelsk, tysk, fransk, svensk, dansk eller auto-deteksjon
-- 🎨 **Tema**: Lys og mørk modus med høy kontrast
-- 📐 **Layout**: Fullskjerm eller bunnstripe (2-4 linjer)
+- 🎨 **Tema**: Lys, mørk og chroma key modus med høy kontrast
+- 📐 **Visningsmoduser**: Fullscreen Short, Fullscreen Long, eller Captions Lower
 - 🔤 **Typografi**: Justerbar font, størrelse og linjeavstand
 - ⌨️ **Tastatursnarveier** for rask kontroll
 - ♿ **Universell utforming**: WCAG 2.1 AA/AAA-kompatibel
-- 🔒 **Personvern**: Zero-retention, ingen lagring av lyd eller tekst
+- 🔒 **Personvern**: Zero-retention, ingen lagring av lyd eller tekst på serveren
+- 💾 **Lokal datalagring**: Alle data lagres kun lokalt i nettleseren
 
 ## 🚀 Rask start
 
@@ -39,7 +42,9 @@ cd server
 npm install
 ```
 
-3. **Konfigurer miljøvariabler**
+3. **Konfigurer miljøvariabler (valgfritt for testing)**
+
+For lokal utvikling kan du sette en standard API-nøkkel i `.env`:
 
 ```bash
 cp .env.example .env
@@ -51,6 +56,8 @@ Rediger `.env` og legg inn din ElevenLabs API-nøkkel:
 ELEVENLABS_API_KEY=din_api_nøkkel_her
 PORT=3000
 ```
+
+**Merk:** For testing og produksjon kan hver bruker legge inn sin egen API-nøkkel direkte i applikasjonen. Se [API-nøkkel og datalagring](#-api-nøkkel-og-datalagring) nedenfor.
 
 4. **Start serveren**
 
@@ -68,27 +75,44 @@ npm run dev
 
 Naviger til: `http://localhost:3000`
 
+6. **Legg inn API-nøkkel (første gang)**
+
+Ved første besøk vil du se en popup hvor du kan legge inn din ElevenLabs API-nøkkel. Denne lagres lokalt i nettleseren din og huskes mellom sesjoner.
+
 ## 🎯 Bruksanvisning
 
 ### Grunnleggende oppsett
 
-1. **Velg lydkilde**
+1. **Legg inn API-nøkkel (første gang)**
+   - Ved første besøk vises en popup hvor du legger inn din ElevenLabs API-nøkkel
+   - API-nøkkelen lagres lokalt i nettleseren din og huskes mellom sesjoner
+   - Du kan endre API-nøkkel senere ved å bruke "Clear All Data" og legge inn en ny
+   - Se [API-nøkkel og datalagring](#-api-nøkkel-og-datalagring) for mer informasjon
+
+2. **Velg lydkilde**
    - Klikk på "Velg mikrofon" og velg ønsket lydkilde
    - For Focusrite USB-lydkort, velg "Focusrite" fra listen
+   - Klikk på 🔄-knappen for å oppdatere mikrofonlisten
 
-2. **Start opptak**
+3. **Start opptak**
    - Klikk på "Start opptak" eller trykk `M`
    - Status-indikator øverst blir grønn når tilkoblet
    - Tekst vises automatisk når du snakker
 
-3. **Tilpass visningen**
+4. **Tilpass visningen**
    - Bruk kontrollpanelet til å justere font, tema og layout
-   - Alle innstillinger lagres automatisk
+   - Alle innstillinger lagres automatisk lokalt i nettleseren
 
-4. **Velg språk**
+5. **Velg språk**
    - Velg ønsket språk fra "Language"-menyen
    - "Auto-detection" vil automatisk detektere språket som snakkes
    - Se [Språkvalg og API-begrensninger](#-språkvalg-og-api-begrensninger) nedenfor for viktig informasjon
+
+6. **Lagre og laste ned transcripts**
+   - Når du stopper opptak, lagres transcriptet automatisk lokalt
+   - Klikk på "📄 Transcripts" for å se alle lagrede transcripts
+   - Last ned individuelle transcripts eller alle sammen
+   - Se [API-nøkkel og datalagring](#-api-nøkkel-og-datalagring) for mer informasjon
 
 ### ⌨️ Tastatursnarveier
 
@@ -201,13 +225,16 @@ readymedia-realtime/
 **Backend:**
 - Express.js server for token-generering
 - Proxy til ElevenLabs Scribe v2 Realtime API
+- Støtter både bruker-spesifikke og server-spesifikke API-nøkler
 - HTTPS/WSS-støtte
 
 **Frontend:**
 - Vanilla JavaScript (ingen framework-avhengigheter)
 - WebSocket-tilkobling til Scribe API
 - Web Audio API for lydfangst
-- Local Storage for innstillinger
+- **localStorage** for innstillinger og API-nøkkel
+- **IndexedDB** for lokal lagring av transcripts
+- Modal-basert API-nøkkel input
 
 **STT Engine:**
 - ElevenLabs Scribe v2 Realtime
@@ -215,13 +242,93 @@ readymedia-realtime/
 - Manual commit strategy
 - ~150-250ms latency
 
+**Datalagring:**
+- **localStorage**: API-nøkkel, innstillinger (tema, typografi, språk, etc.)
+- **IndexedDB**: Transcripts (lokal database i nettleseren)
+- **Ingen server-lagring**: Alle data lagres kun lokalt
+
+## 🔑 API-nøkkel og datalagring
+
+### Hvordan API-nøkkel fungerer
+
+ReadyMedia Realtime støtter to moduser for API-nøkkel:
+
+#### 1. Bruker-spesifikk API-nøkkel (anbefalt for testing)
+- Hver bruker legger inn sin egen ElevenLabs API-nøkkel direkte i applikasjonen
+- API-nøkkelen lagres **lokalt** i nettleserens `localStorage`
+- **Aldri delt med serveren** - kun brukt for å generere tokens
+- Huskes mellom sesjoner (reload, lukk/åpne nettleser)
+- **Ikke delt mellom nettlesere** - hver nettleser har sin egen lagring
+- **Incognito/Private mode**: Har egen isolert lagring som slettes når vinduet lukkes
+
+#### 2. Server-spesifikk API-nøkkel (for produksjon)
+- API-nøkkel kan settes i `.env`-filen på serveren
+- Brukes som fallback hvis brukeren ikke har lagt inn sin egen nøkkel
+- Anbefalt for produksjonsmiljøer hvor alle brukere skal bruke samme API-nøkkel
+
+### Hvordan data lagres
+
+#### Lokal lagring (localStorage)
+- **API-nøkkel**: Lagres i `localStorage` som `elevenlabs_api_key`
+- **Innstillinger**: Lagres i `localStorage` som `readymedia_realtime_settings`
+  - Tema (lys/mørk/chroma)
+  - Visningsmodus (Fullscreen Short/Long, Captions Lower)
+  - Typografi (font, størrelse, linjeavstand)
+  - Språkvalg
+  - Lydkilde
+
+#### IndexedDB (lokal database)
+- **Transcripts**: Alle lagrede transcripts lagres i IndexedDB
+  - Lagres automatisk når opptak stoppes
+  - Kun tilgjengelig i samme nettleser
+  - Ikke delt med serveren eller andre brukere
+  - Kan vises og lastes ned via "📄 Transcripts"-knappen
+
+### Slette data
+
+#### Slette alle data ("Clear All Data")
+- Klikk på "🗑️ Clear All Data"-knappen i Actions-menyen
+- Sletter:
+  - Alle transcripts (IndexedDB)
+  - API-nøkkel (localStorage)
+  - Alle innstillinger (localStorage)
+- Viser API-nøkkel-modal igjen etter sletting
+- **Merk:** Dette kan ikke angres!
+
+#### Slette kun transcripts
+- Åpne "📄 Transcripts"-modal
+- Klikk på "🗑️ Clear All" for å slette alle transcripts
+- Dette påvirker ikke API-nøkkel eller innstillinger
+
+### Personvern og sikkerhet
+
+- ✅ **Ingen lagring på serveren**: Alle data lagres kun lokalt i nettleseren
+- ✅ **API-nøkkel**: Lagres lokalt, aldri delt med serveren (kun brukt for token-generering)
+- ✅ **Transcripts**: Lagres kun lokalt i IndexedDB, ikke på serveren
+- ✅ **Zero-retention**: Ingen lyd eller tekst lagres på serveren
+- ✅ **HTTPS/WSS-kryptert kommunikasjon**: All kommunikasjon er kryptert
+- ✅ **GDPR-kompatibel**: Ingen personopplysninger lagres på serveren
+- ✅ **Isolert lagring**: Hver nettleser har sin egen isolerte lagring
+- ✅ **Incognito-støtte**: Incognito/Private mode har egen isolert lagring
+
+### Viktig for testing
+
+Når du tester applikasjonen:
+1. Hver tester må legge inn sin egen API-nøkkel
+2. Transcripts lagres kun lokalt for hver tester
+3. Ingen data deles mellom brukere
+4. For å "logge ut": Bruk "Clear All Data"-knappen
+5. For å teste på nytt: Legg inn API-nøkkel igjen
+
 ## 🔒 Personvern og sikkerhet
 
-- ✅ Ingen lagring av lyd eller tekst som standard
-- ✅ API-nøkkel aldri eksponert til klient
-- ✅ HTTPS/WSS-kryptert kommunikasjon
-- ✅ Zero-retention modus på STT-API
-- ✅ GDPR-kompatibel databehandling
+- ✅ **Ingen lagring på serveren**: Alle data lagres kun lokalt i nettleseren
+- ✅ **API-nøkkel**: Lagres lokalt, aldri delt med serveren (kun brukt for token-generering)
+- ✅ **Transcripts**: Lagres kun lokalt i IndexedDB, ikke på serveren
+- ✅ **HTTPS/WSS-kryptert kommunikasjon**: All kommunikasjon er kryptert
+- ✅ **Zero-retention modus**: Ingen lyd eller tekst lagres på serveren
+- ✅ **GDPR-kompatibel databehandling**: Ingen personopplysninger lagres på serveren
+- ✅ **Isolert lagring**: Hver nettleser har sin egen isolerte lagring
 
 ## 🎓 Bruksscenarier
 
@@ -288,7 +395,56 @@ PORT=3000
 NODE_ENV=production
 ```
 
+## 📄 Transcript-håndtering
+
+> **⚠️ Merk:** Transcript-lagring og nedlasting er under utvikling. Funksjonaliteten er delvis implementert, men kan ha noen problemer. Full funksjonalitet kommer i en senere versjon.
+
+### Planlagt funksjonalitet
+
+Når funksjonaliteten er fullstendig implementert, vil den inkludere:
+
+- **Automatisk lagring**: Når du stopper opptak, lagres transcriptet automatisk lokalt i IndexedDB
+- **Vise transcripts**: Alle lagrede transcripts vises i en modal
+- **Nedlasting**: Last ned individuelle transcripts eller alle sammen
+- **Lokal lagring**: Alle transcripts lagres kun lokalt i nettleseren (ikke på serveren)
+
+### Status
+
+- ✅ UI for transcript-visning er implementert
+- ✅ IndexedDB-struktur er på plass
+- ⚠️ Lagring og henting av transcripts er under testing
+- 🔄 Full funksjonalitet kommer i en senere versjon
+
 ## 🔧 Feilsøking
+
+### API-nøkkel-problemer
+
+**Problem: "API key not set"**
+- Løsning: Legg inn din ElevenLabs API-nøkkel i popup-modalen som vises ved første besøk
+- Sjekk at API-nøkkelen starter med "sk_"
+- Hvis modal ikke vises, sjekk konsollen (F12) for feilmeldinger
+
+**Problem: "Invalid API key"**
+- Løsning: Sjekk at API-nøkkelen er korrekt kopiert
+- Verifiser at API-nøkkelen er aktiv på [ElevenLabs dashboard](https://elevenlabs.io/app/settings/api-keys)
+- Prøv å slette og legge inn API-nøkkelen på nytt (bruk "Clear All Data")
+
+**Problem: API-nøkkel huskes ikke etter reload**
+- Dette bør ikke skje i normal nettleser
+- Sjekk at cookies/localStorage ikke er blokkert
+- I incognito/private mode er dette forventet oppførsel
+
+### Transcript-problemer
+
+**Problem: Ingen transcripts vises i listen**
+- Sjekk at du har stoppet opptak (transcripts lagres kun når opptak stoppes)
+- Sjekk konsollen (F12) for feilmeldinger om IndexedDB
+- Prøv å starte og stoppe et nytt opptak
+
+**Problem: Transcripts forsvinner**
+- Transcripts lagres kun lokalt i nettleseren
+- Hvis du sletter nettleserdata, forsvinner transcripts
+- I incognito/private mode slettes transcripts når vinduet lukkes
 
 ### Mikrofon fungerer ikke
 - Sjekk nettleserens tillatelser (kamera/mikrofon)

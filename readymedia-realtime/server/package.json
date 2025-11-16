@@ -1,6 +1,6 @@
 {
   "name": "readymedia-realtime-server",
-  "version": "6.0.0",
+  "version": "7.1.0",
   "description": "ReadyMedia Realtime - Backend server for token generation and Scribe API proxy",
   "main": "server.js",
   "scripts": {

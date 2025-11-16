@@ -267,6 +267,7 @@ body[data-theme="chroma"][data-layout="stripe"] .text-container {
 }
 
 .control-select,
+.control-input,
 .btn-secondary,
 .btn-primary,
 .btn-warning {
@@ -296,11 +297,23 @@ body[data-theme="chroma"][data-layout="stripe"] .text-container {
 }
 
 body[data-theme="light"] .control-select,
+body[data-theme="light"] .control-input,
 body[data-theme="light"] .btn-secondary,
 body[data-theme="light"] .btn-primary,
 body[data-theme="light"] .btn-warning {
     background: rgba(0, 0, 0, 0.03);
     color: #1a1a1a; /* Dark text for light theme */
+}
+
+.control-input {
+    cursor: text;
+    font-family: inherit;
+}
+
+.control-input:focus {
+    outline: none;
+    border-color: #4a9eff;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 body[data-theme="light"] .control-select option {
@@ -372,6 +385,29 @@ body[data-theme="light"] .btn-secondary.active {
     background: var(--status-connected);
     border-color: var(--status-connected);
     color: white; /* White text on green background is fine */
+}
+
+/* Green button when transcripts are available */
+.btn-secondary.has-transcripts {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+}
+
+.btn-secondary.has-transcripts:hover {
+    background: #059669;
+    border-color: #059669;
+}
+
+body[data-theme="light"] .btn-secondary.has-transcripts {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+}
+
+body[data-theme="light"] .btn-secondary.has-transcripts:hover {
+    background: #059669;
+    border-color: #059669;
 }
 
 .btn-primary {

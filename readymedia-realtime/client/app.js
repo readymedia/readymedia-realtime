@@ -18,6 +18,16 @@ class ReadyMediaRealtime {
         // Settings
         this.settings = this.loadSettings();
         
+        // API Key - stored in localStorage
+        this.apiKey = localStorage.getItem('elevenlabs_api_key') || null;
+        
+        // IndexedDB for transcripts
+        this.db = null;
+        // Initialize IndexedDB asynchronously
+        this.initIndexedDB().catch(err => {
+            console.error('Failed to initialize IndexedDB:', err);
+        });
+        
         // Transcripts - unified lines array
         // lines[0] = øverste linje, lines[lines.length - 1] = nederste linje (partial)
         this.lines = []; // Array of { text: string, isPartial: boolean, timestamp: number, language?: string }
@@ -64,14 +74,92 @@ class ReadyMediaRealtime {
         // Event listeners
         this.initEventListeners();
         
+        // Check if API key is set, show modal if not
+        if (!this.apiKey) {
+            this.showApiKeyModal();
+        } else {
+            this.hideApiKeyModal();
+        }
+        
         // Apply saved settings
         this.applySettings();
         
         // Initialize audio inputs
         this.initAudioInputs();
         
+        // Check for existing transcripts and update button
+        this.updateTranscriptButton();
+        
         // Start periodic cleanup of old lines
         this.startPeriodicCleanup();
+    }
+    
+    // Initialize IndexedDB for transcript storage
+    async initIndexedDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('ReadyMediaRealtime', 1);
+            
+            request.onerror = () => {
+                console.error('IndexedDB error:', request.error);
+                reject(request.error);
+            };
+            
+            request.onsuccess = () => {
+                this.db = request.result;
+                console.log('✅ IndexedDB initialized');
+                resolve(this.db);
+            };
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                
+                // Create object store for transcripts
+                if (!db.objectStoreNames.contains('transcripts')) {
+                    const objectStore = db.createObjectStore('transcripts', { keyPath: 'id', autoIncrement: true });
+                    objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+                    objectStore.createIndex('filename', 'filename', { unique: false });
+                }
+            };
+        });
+    }
+    
+    // API Key Modal handlers
+    showApiKeyModal() {
+        if (this.apiKeyModal) {
+            this.apiKeyModal.classList.remove('hidden');
+            if (this.apiKeyInput) {
+                this.apiKeyInput.focus();
+            }
+        }
+    }
+    
+    hideApiKeyModal() {
+        if (this.apiKeyModal) {
+            this.apiKeyModal.classList.add('hidden');
+        }
+    }
+    
+    saveApiKeyHandler() {
+        const apiKey = this.apiKeyInput.value.trim();
+        if (!apiKey) {
+            alert('Please enter an API key');
+            return;
+        }
+        
+        if (!apiKey.startsWith('sk_')) {
+            if (!confirm('The API key should start with "sk_". Are you sure this is correct?')) {
+                return;
+            }
+        }
+        
+        // Save to localStorage
+        localStorage.setItem('elevenlabs_api_key', apiKey);
+        this.apiKey = apiKey;
+        
+        // Hide modal
+        this.hideApiKeyModal();
+        
+        console.log('✅ API key saved');
     }
     
     startPeriodicCleanup() {
@@ -135,6 +223,21 @@ class ReadyMediaRealtime {
         // Overlay
         this.overlay = document.getElementById('overlay');
         this.overlayMessage = document.getElementById('overlayMessage');
+        
+        // API Key Modal
+        this.apiKeyModal = document.getElementById('apiKeyModal');
+        this.apiKeyInput = document.getElementById('apiKeyInput');
+        this.saveApiKey = document.getElementById('saveApiKey');
+        
+        // Transcripts Modal
+        this.transcriptsModal = document.getElementById('transcriptsModal');
+        this.downloadTranscripts = document.getElementById('downloadTranscripts');
+        this.closeTranscriptsModal = document.getElementById('closeTranscriptsModal');
+        this.transcriptsList = document.getElementById('transcriptsList');
+        this.noTranscripts = document.getElementById('noTranscripts');
+        this.downloadAllTranscripts = document.getElementById('downloadAllTranscripts');
+        this.clearAllTranscripts = document.getElementById('clearAllTranscripts');
+        this.clearAllData = document.getElementById('clearAllData');
     }
     
     initEventListeners() {
@@ -210,6 +313,30 @@ class ReadyMediaRealtime {
         // Actions
         this.clearText.addEventListener('click', () => this.clearAllText());
         this.fullscreenToggle.addEventListener('click', () => this.toggleFullscreen());
+        
+        // API Key Modal
+        this.saveApiKey.addEventListener('click', () => this.saveApiKeyHandler());
+        this.apiKeyInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.saveApiKeyHandler();
+            }
+        });
+        
+        // Transcripts Modal
+        this.downloadTranscripts.addEventListener('click', () => this.showTranscriptsModal());
+        this.closeTranscriptsModal.addEventListener('click', () => this.hideTranscriptsModal());
+        this.transcriptsModal.addEventListener('click', (e) => {
+            if (e.target === this.transcriptsModal) {
+                this.hideTranscriptsModal();
+            }
+        });
+        this.downloadAllTranscripts.addEventListener('click', () => this.downloadAllTranscriptsHandler());
+        this.clearAllTranscripts.addEventListener('click', () => this.clearAllTranscriptsHandler());
+        
+        // Clear all data button
+        if (this.clearAllData) {
+            this.clearAllData.addEventListener('click', () => this.clearAllUserData());
+        }
         
         // Info modal
         this.infoButton.addEventListener('click', () => this.showInfoModal());
@@ -431,12 +558,21 @@ class ReadyMediaRealtime {
     
     async fetchToken() {
         try {
+            // Check if API key is set
+            if (!this.apiKey) {
+                this.showApiKeyModal();
+                throw new Error('API key not set. Please enter your ElevenLabs API key.');
+            }
+            
             console.log('Requesting token from /api/scribe-token...');
             const response = await fetch('/api/scribe-token', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({
+                    apiKey: this.apiKey
+                })
             });
             
             console.log('Token response status:', response.status);
@@ -729,7 +865,7 @@ class ReadyMediaRealtime {
             default:
                 // Only log unknown types that aren't input_error
                 if (data.message_type !== 'input_error') {
-                    console.log('Unknown message type:', data);
+                console.log('Unknown message type:', data);
                 }
         }
     }
@@ -749,8 +885,8 @@ class ReadyMediaRealtime {
             // If we have no committed lines yet, show partial for low latency
             if (hasCommittedLines) {
                 // Just update language if needed, but don't render partial text
-                if (languageCode) {
-                    this.updateLanguageDisplay(languageCode);
+        if (languageCode) {
+            this.updateLanguageDisplay(languageCode);
                 }
                 return;
             }
@@ -863,8 +999,8 @@ class ReadyMediaRealtime {
             // Add to session transcripts for saving
             this.sessionTranscripts.push({
                 id: now,
-                text: text.trim(),
-                language: languageCode,
+            text: text.trim(),
+            language: languageCode,
                 timestamp: new Date(now)
             });
             
@@ -1116,30 +1252,398 @@ class ReadyMediaRealtime {
             
             console.log(`Saving ${this.sessionTranscripts.length} transcript entries...`);
             
-            const response = await fetch('/api/save-transcript', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    transcripts: this.sessionTranscripts,
-                    languageCode: this.settings.languageCode || ''
-                })
-            });
+            // Generate filename with date and time
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
+            const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, ''); // HHMMSS
+            const filename = `readymedia_realtime_${dateStr}_${timeStr}.txt`;
             
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to save transcript');
+            // Get transcript text from sessionTranscripts
+            const transcriptText = this.sessionTranscripts
+                .map(t => t.text)
+                .filter(text => text && text.trim())
+                .join(' ');
+            
+            if (!transcriptText || transcriptText.trim().length === 0) {
+                console.log('No transcript text to save');
+                return;
             }
             
-            const data = await response.json();
-            console.log('✅ Transcript saved:', data.filename);
+            // Format date and time for header
+            const dateTime = now.toLocaleString('no-NO', {
+                dateStyle: 'long',
+                timeStyle: 'medium'
+            });
             
-            // Optionally show a notification to user
-            // this.showError is used for errors, but we could add a success message
+            // Get language name
+        const languageNames = {
+            'en': 'Engelsk',
+            'no': 'Norsk',
+            'nb': 'Norsk (Bokmål)',
+            'nn': 'Norsk (Nynorsk)',
+            'sv': 'Svensk',
+            'da': 'Dansk',
+            'de': 'Tysk',
+            'fr': 'Fransk',
+                '': 'Auto-deteksjon'
+            };
+            const languageCode = this.settings.languageCode || '';
+            const languageName = languageNames[languageCode] || languageCode || 'Auto-deteksjon';
+            
+            // Create file content with header
+            const fileContent = `Dato og tid: ${dateTime}
+Språk: ${languageName}
+
+This transcript is made using ReadyMedia Realtime, get more info at http://readymedia.no/realtime
+
+---
+
+${transcriptText}
+`;
+            
+            // Save to IndexedDB (local storage only - no server)
+            if (this.db) {
+                await this.saveTranscriptToIndexedDB(filename, fileContent);
+                console.log('✅ Transcript saved to local storage:', filename);
+                
+                // Update transcript button to show we have transcripts
+                await this.updateTranscriptButton();
+            } else {
+                console.warn('IndexedDB not available, transcript not saved');
+            }
+            
+            // Optionally trigger download
+            // Uncomment if you want automatic download:
+            // const blob = new Blob([fileContent], { type: 'text/plain' });
+            // const url = window.URL.createObjectURL(blob);
+            // const a = document.createElement('a');
+            // a.href = url;
+            // a.download = filename;
+            // document.body.appendChild(a);
+            // a.click();
+            // document.body.removeChild(a);
+            // window.URL.revokeObjectURL(url);
+            
         } catch (error) {
             console.error('Failed to save transcript:', error);
             // Don't show error to user - saving is optional/background operation
+        }
+    }
+    
+    // Update transcript button to show if we have transcripts
+    async updateTranscriptButton() {
+        if (!this.downloadTranscripts) return;
+        
+        try {
+            // Wait for IndexedDB to be ready
+            if (!this.db) {
+                try {
+                    await this.initIndexedDB();
+                } catch (err) {
+                    console.error('Failed to initialize IndexedDB for button update:', err);
+                    return;
+                }
+            }
+            
+            const transcripts = await this.getAllTranscripts();
+            const hasTranscripts = transcripts.length > 0;
+            
+            console.log(`📄 Found ${transcripts.length} transcripts, updating button...`);
+            
+            if (hasTranscripts) {
+                // Make button green to indicate we have transcripts
+                this.downloadTranscripts.classList.add('has-transcripts');
+                this.downloadTranscripts.classList.remove('no-transcripts');
+                // Update button text to show count
+                const count = transcripts.length;
+                // Get original text (remove any existing count)
+                let originalText = this.downloadTranscripts.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
+                // If original text is empty, use default
+                if (!originalText) {
+                    originalText = '📄 Transcripts';
+                }
+                this.downloadTranscripts.textContent = `${originalText} (${count})`;
+                console.log(`✅ Transcript button updated: ${originalText} (${count})`);
+            } else {
+                // Remove green styling
+                this.downloadTranscripts.classList.remove('has-transcripts');
+                this.downloadTranscripts.classList.add('no-transcripts');
+                // Remove count from button text
+                let originalText = this.downloadTranscripts.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
+                if (!originalText) {
+                    originalText = '📄 Transcripts';
+                }
+                this.downloadTranscripts.textContent = originalText;
+                console.log('✅ Transcript button updated: No transcripts');
+            }
+        } catch (error) {
+            console.error('Error updating transcript button:', error);
+        }
+    }
+    
+    // Save transcript to IndexedDB
+    async saveTranscriptToIndexedDB(filename, transcriptText) {
+        // Wait for IndexedDB to be initialized if not ready
+        if (!this.db) {
+            console.log('IndexedDB not ready, initializing...');
+            try {
+                await this.initIndexedDB();
+            } catch (err) {
+                console.error('Failed to initialize IndexedDB:', err);
+                return;
+            }
+        }
+        
+        if (!this.db) {
+            console.warn('IndexedDB still not available after initialization');
+            return;
+        }
+        
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['transcripts'], 'readwrite');
+            const objectStore = transaction.objectStore('transcripts');
+            
+            const transcriptData = {
+                filename: filename,
+                text: transcriptText,
+                timestamp: Date.now(),
+                languageCode: this.settings.languageCode || '',
+                date: new Date().toISOString()
+            };
+            
+            const request = objectStore.add(transcriptData);
+            
+            request.onsuccess = () => {
+                console.log('✅ Transcript saved to IndexedDB:', filename);
+                resolve(request.result);
+            };
+            
+            request.onerror = () => {
+                console.error('❌ Error saving to IndexedDB:', request.error);
+                reject(request.error);
+            };
+        });
+    }
+    
+    // Get all transcripts from IndexedDB
+    async getAllTranscripts() {
+        // Wait for IndexedDB to be initialized if not ready
+        if (!this.db) {
+            console.log('IndexedDB not ready, initializing...');
+            try {
+                await this.initIndexedDB();
+            } catch (err) {
+                console.error('Failed to initialize IndexedDB:', err);
+                return [];
+            }
+        }
+        
+        if (!this.db) {
+            console.warn('IndexedDB still not available after initialization');
+            return [];
+        }
+        
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['transcripts'], 'readonly');
+            const objectStore = transaction.objectStore('transcripts');
+            const index = objectStore.index('timestamp');
+            const request = index.openCursor(null, 'prev'); // Sort by timestamp descending
+            
+            const transcripts = [];
+            
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    transcripts.push(cursor.value);
+                    cursor.continue();
+                } else {
+                    resolve(transcripts);
+                }
+            };
+            
+            request.onerror = () => {
+                console.error('❌ Error reading from IndexedDB:', request.error);
+                reject(request.error);
+            };
+        });
+    }
+    
+    // Show transcripts modal
+    async showTranscriptsModal() {
+        if (!this.transcriptsModal) return;
+        
+        this.transcriptsModal.classList.remove('hidden');
+        
+        // Load and display transcripts
+        await this.loadTranscriptsList();
+        
+        // Update button after loading (in case count changed)
+        await this.updateTranscriptButton();
+    }
+    
+    // Hide transcripts modal
+    hideTranscriptsModal() {
+        if (this.transcriptsModal) {
+            this.transcriptsModal.classList.add('hidden');
+        }
+    }
+    
+    // Load and display transcripts list
+    async loadTranscriptsList() {
+        if (!this.transcriptsList || !this.noTranscripts) return;
+        
+        try {
+            const transcripts = await this.getAllTranscripts();
+            
+            if (transcripts.length === 0) {
+                this.transcriptsList.style.display = 'none';
+                this.noTranscripts.style.display = 'block';
+                this.downloadAllTranscripts.style.display = 'none';
+                this.clearAllTranscripts.style.display = 'none';
+                return;
+            }
+            
+            this.transcriptsList.style.display = 'flex';
+            this.noTranscripts.style.display = 'none';
+            this.downloadAllTranscripts.style.display = 'block';
+            this.clearAllTranscripts.style.display = 'block';
+            
+            // Clear existing list
+            this.transcriptsList.innerHTML = '';
+            
+            // Display each transcript
+            transcripts.forEach((transcript, index) => {
+                const transcriptItem = document.createElement('div');
+                transcriptItem.style.cssText = 'padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255, 255, 255, 0.02);';
+                
+                const date = new Date(transcript.timestamp);
+                const dateStr = date.toLocaleString();
+                const preview = transcript.text.substring(0, 100) + (transcript.text.length > 100 ? '...' : '');
+                
+                transcriptItem.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: var(--text-secondary);">${transcript.filename}</strong>
+                            <div style="font-size: 12px; color: #888; margin-top: 5px;">${dateStr}</div>
+                        </div>
+                        <button class="btn-secondary" data-transcript-id="${transcript.id}" style="padding: 5px 10px; font-size: 12px;">📥 Download</button>
+                    </div>
+                    <div style="font-size: 13px; color: var(--text-primary); line-height: 1.4;">${this.escapeHtml(preview)}</div>
+                `;
+                
+                // Add download button event
+                const downloadBtn = transcriptItem.querySelector('button');
+                downloadBtn.addEventListener('click', () => this.downloadTranscript(transcript));
+                
+                this.transcriptsList.appendChild(transcriptItem);
+            });
+        } catch (error) {
+            console.error('Error loading transcripts:', error);
+            this.transcriptsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #ef4444;">Error loading transcripts</div>';
+        }
+    }
+    
+    // Download a single transcript
+    downloadTranscript(transcript) {
+        const blob = new Blob([transcript.text], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = transcript.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+    
+    // Download all transcripts
+    async downloadAllTranscriptsHandler() {
+        try {
+            const transcripts = await this.getAllTranscripts();
+            if (transcripts.length === 0) return;
+            
+            // Create a zip-like structure or download individually
+            // For simplicity, we'll download them one by one with a small delay
+            for (let i = 0; i < transcripts.length; i++) {
+                setTimeout(() => {
+                    this.downloadTranscript(transcripts[i]);
+                }, i * 200); // 200ms delay between downloads
+            }
+        } catch (error) {
+            console.error('Error downloading all transcripts:', error);
+            alert('Error downloading transcripts');
+        }
+    }
+    
+    // Clear all transcripts
+    async clearAllTranscriptsHandler() {
+        if (!confirm('Are you sure you want to delete all saved transcripts? This cannot be undone.')) {
+            return;
+        }
+        
+        if (!this.db) {
+            console.warn('IndexedDB not initialized');
+            return;
+        }
+        
+        try {
+            const transaction = this.db.transaction(['transcripts'], 'readwrite');
+            const objectStore = transaction.objectStore('transcripts');
+            const request = objectStore.clear();
+            
+            request.onsuccess = () => {
+                console.log('✅ All transcripts cleared');
+                this.loadTranscriptsList();
+                this.updateTranscriptButton();
+            };
+            
+            request.onerror = () => {
+                console.error('❌ Error clearing transcripts:', request.error);
+                alert('Error clearing transcripts');
+            };
+        } catch (error) {
+            console.error('Error clearing transcripts:', error);
+            alert('Error clearing transcripts');
+        }
+    }
+    
+    // Clear all user data (logout function)
+    async clearAllUserData() {
+        if (!confirm('Are you sure you want to clear all data? This will delete:\n- All saved transcripts\n- Your API key\n- All settings\n\nThis cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            // Clear IndexedDB
+            if (this.db) {
+                const transaction = this.db.transaction(['transcripts'], 'readwrite');
+                const objectStore = transaction.objectStore('transcripts');
+                const clearRequest = objectStore.clear();
+                
+                clearRequest.onsuccess = () => {
+                    console.log('✅ All transcripts cleared from IndexedDB');
+                };
+            }
+            
+            // Clear localStorage (API key and settings)
+            localStorage.removeItem('elevenlabs_api_key');
+            localStorage.removeItem('readymedia_realtime_settings');
+            
+            // Clear session data
+            this.apiKey = null;
+            this.sessionTranscripts = [];
+            this.lines = [];
+            
+            // Reset UI
+            this.clearAllText();
+            this.hideApiKeyModal();
+            this.showApiKeyModal(); // Show API key modal again
+            
+            console.log('✅ All user data cleared');
+            alert('All data has been cleared. Please enter your API key to continue.');
+        } catch (error) {
+            console.error('Error clearing user data:', error);
+            alert('Error clearing data');
         }
     }
     

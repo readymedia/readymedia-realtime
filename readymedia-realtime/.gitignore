@@ -30,3 +30,9 @@ build/
 # Temporary files
 tmp/
 temp/
+
+# Transcripts (optional - remove if you want to commit them)
+transcripts/
+
+# Vercel
+.vercel

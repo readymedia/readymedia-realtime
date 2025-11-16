@@ -23,12 +23,13 @@ app.get('/api/health', (req, res) => {
 // Generate single-use token for Scribe Realtime
 app.post('/api/scribe-token', async (req, res) => {
   try {
-    const apiKey = process.env.ELEVENLABS_API_KEY;
+    // Accept API key from request body (for user-provided keys) or use environment variable
+    const apiKey = req.body.apiKey || process.env.ELEVENLABS_API_KEY;
     
     if (!apiKey) {
-      console.error('❌ ELEVENLABS_API_KEY is not set in .env file');
+      console.error('❌ ELEVENLABS_API_KEY is not set');
       return res.status(500).json({ 
-        error: 'API key not configured. Please set ELEVENLABS_API_KEY in your .env file.' 
+        error: 'API key not provided. Please provide an API key in the request or set ELEVENLABS_API_KEY in your .env file.' 
       });
     }
 

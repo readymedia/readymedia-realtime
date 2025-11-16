@@ -100,10 +100,12 @@
             <!-- Actions -->
             <div class="control-group control-group-compact">
                 <label>⚡ Actions</label>
-                <div class="control-row" style="gap: 10px;">
+                <div class="control-row" style="gap: 10px; flex-wrap: wrap;">
                     <button id="clearText" class="btn-warning">🗑️ Clear (C)</button>
+                    <button id="downloadTranscripts" class="btn-secondary">📄 Transcripts</button>
                     <button id="infoButton" class="btn-secondary">ℹ️ Info</button>
                     <button id="fullscreenToggle" class="btn-primary">⛶ Fullscreen (F)</button>
+                    <button id="clearAllData" class="btn-warning" style="font-size: 12px; padding: 5px 10px;" title="Clear all data (transcripts, API key, settings)">🗑️ Clear All Data</button>
                 </div>
             </div>
 
@@ -124,6 +126,28 @@
         </div>
     </div>
 
+    <!-- API Key Modal - Shown on first visit -->
+    <div id="apiKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔑 Enter Your ElevenLabs API Key</h2>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px;">To use this application, you need your own ElevenLabs API key. This key is stored locally in your browser and never shared.</p>
+                <div style="margin-bottom: 15px;">
+                    <label for="apiKeyInput" style="display: block; margin-bottom: 5px; font-weight: 500;">API Key:</label>
+                    <input type="password" id="apiKeyInput" class="control-input" placeholder="sk_..." style="width: 100%; padding: 10px; font-family: monospace;">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="saveApiKey" class="btn-primary">Save & Continue</button>
+                </div>
+                <small style="display: block; margin-top: 10px; color: #888; font-size: 12px;">
+                    You can get your API key from <a href="https://elevenlabs.io" target="_blank" style="color: #4a9eff;">elevenlabs.io</a>. You can change it later in the settings.
+                </small>
+            </div>
+        </div>
+    </div>
+
     <!-- Info Modal - Outside main container for proper positioning -->
     <div id="infoModal" class="modal hidden">
         <div class="modal-content">
@@ -135,6 +159,28 @@
                 <div id="infoContent">
                     <!-- Content will be populated by JavaScript -->
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transcripts Modal - For viewing and downloading transcripts -->
+    <div id="transcriptsModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
+            <div class="modal-header">
+                <h2>📄 Transcripts</h2>
+                <button id="closeTranscriptsModal" class="btn-icon" title="Close">✕</button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; max-height: calc(80vh - 120px);">
+                <div id="transcriptsList" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Transcripts will be populated by JavaScript -->
+                </div>
+                <div id="noTranscripts" style="text-align: center; padding: 40px; color: #888; display: none;">
+                    No transcripts saved yet. Transcripts will appear here after you save them.
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <button id="downloadAllTranscripts" class="btn-secondary" style="display: none;">📥 Download All</button>
+                <button id="clearAllTranscripts" class="btn-warning" style="display: none;">🗑️ Clear All</button>
             </div>
         </div>
     </div>
@@ -157,6 +203,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=44"></script>
+    <script src="app.js?v=47"></script>
 </body>
 </html>

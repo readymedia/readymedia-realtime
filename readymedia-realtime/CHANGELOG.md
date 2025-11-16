@@ -5,6 +5,38 @@ All notable changes to ReadyMedia Realtime will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1] - 2025-01-16
+
+### Added
+- **Bruker-spesifikk API-nøkkel**: Hver bruker kan legge inn sin egen ElevenLabs API-nøkkel direkte i applikasjonen
+- **API-nøkkel modal**: Popup ved første besøk for å legge inn API-nøkkel
+- **Lokal datalagring**: Alle data lagres kun lokalt i nettleseren (localStorage og IndexedDB)
+- **Transcript UI**: Grunnleggende UI for transcript-visning og nedlasting (under utvikling)
+- **Clear All Data**: Funksjonalitet for å slette alle data (API-nøkkel, innstillinger, transcripts)
+- **Vercel-deployment**: Full støtte for deployment til Vercel med serverless functions
+
+### Changed
+- **Token-generering**: Server aksepterer nå API-nøkkel fra request body (bruker-spesifikk) eller miljøvariabel
+- **Datalagring**: Alle data lagres kun lokalt, ingen lagring på serveren
+- **Personvern**: Forbedret personvern med isolert lagring per nettleser
+
+### Fixed
+- ✅ API-nøkkel huskes mellom sesjoner
+- ✅ Bedre feilhåndtering for IndexedDB
+- ✅ Forbedret logging for debugging
+
+### Known Issues
+- ⚠️ Transcript-lagring og nedlasting er under utvikling og kan ha noen problemer
+- Full transcript-funksjonalitet kommer i en senere versjon
+
+### Technical
+- IndexedDB for lokal lagring av transcripts
+- localStorage for API-nøkkel og innstillinger
+- Serverless functions for Vercel-deployment
+- Forbedret error handling og logging
+
+---
+
 ## [6.0.0] - 2025-01-16
 
 ### Added
