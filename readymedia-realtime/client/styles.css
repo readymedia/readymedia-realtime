@@ -204,7 +204,7 @@ body[data-theme="chroma"][data-layout="stripe"] .text-container {
 }
 
 .control-panel.collapsed {
-    transform: translateY(calc(-100% + 40px));
+    transform: translateY(-100%);
 }
 
 .control-header {
@@ -223,20 +223,33 @@ body[data-theme="chroma"][data-layout="stripe"] .text-container {
 .control-content {
     padding: 20px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-items: start;
+    row-gap: 6px;
+    column-gap: 15px;
 }
 
 .control-group {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
+    min-width: 0; /* Prevent overflow */
+    margin: 0;
+    padding: 0;
+}
+
+/* Reduce spacing for compact groups (Theme, Viewing Mode, Actions) */
+.control-group-compact {
+    gap: 4px;
 }
 
 .control-group > label {
     font-weight: 600;
     font-size: 14px;
     color: var(--text-secondary);
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
 }
 
 .control-row {
@@ -580,6 +593,8 @@ body[data-layout="bottomStrip"] .text-container {
     padding: 20px 40px;
     border-top: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px 8px 0 0;
+    overflow: hidden; /* No scrolling in Captions Lower mode */
+    max-height: none; /* Remove max-height restriction */
 }
 
 body[data-theme="light"][data-layout="bottomStrip"] .text-container {
@@ -609,7 +624,7 @@ body[data-theme="chroma"][data-layout="bottomStrip"] .text-container {
 
 .transcript-line {
     margin-bottom: 0.3em;
-    animation: fadeIn var(--transition-medium);
+    transition: opacity 0.3s ease, color 0.3s ease;
 }
 
 /* Active lines - most recent lines, full color */
@@ -638,6 +653,12 @@ body[data-theme="chroma"][data-layout="bottomStrip"] .text-container {
     color: var(--text-partial);
     font-style: italic;
     min-height: 1.4em;
+}
+
+/* Partial line styling (when rendered as part of lines array) */
+.transcript-line.partial {
+    color: var(--text-partial);
+    font-style: italic;
 }
 
 /* Font size classes */

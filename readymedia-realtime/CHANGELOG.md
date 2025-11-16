@@ -5,6 +5,57 @@ All notable changes to ReadyMedia Realtime will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2025-01-16
+
+### Added
+- **Display Modes**: Three new display modes replacing old layout options
+  - Fullscreen Short: Compact fullscreen with 8 lines, teleprompter-style auto-scroll
+  - Fullscreen Long: Extended fullscreen with 12 lines, smooth scrolling (default)
+  - Captions Lower: Bottom strip mode with 2-3 lines, fixed position
+- **Chroma Key Theme**: New theme optimized for chroma keying with green background (#00D800), white text, and black stroke
+- **Info Modal**: New information modal with app details, API information, and keyboard shortcuts
+- **Language Selection**: Dropdown menu to choose between English, Norwegian, German, French, Swedish, Danish, or Auto-detection
+- **Auto-typography**: Display modes automatically set optimal typography settings
+  - Fullscreen Short: Roboto, L (64px), line spacing 1.3
+  - Fullscreen Long: Roboto, M (52px), line spacing 1.5 (default)
+  - Captions Lower: Open Sans, XS (36px), line spacing 1.2
+- **Transcript Saving**: Automatic saving of transcripts to `.txt` files in `transcripts/` folder
+- **Comprehensive Documentation**: Added detailed documentation about language selection and API limitations
+
+### Changed
+- **Default Display Mode**: Changed from Fullscreen Short to Fullscreen Long
+- **Default Language**: Changed from Auto-detection to English
+- **UI Language**: GUI language now follows selected transcription language (default: English)
+- **Theme Selection**: Changed from buttons to dropdown menu
+- **Control Panel Layout**: Improved spacing and alignment of control groups
+- **Keyboard Shortcuts**: 'B' key now cycles through display modes instead of layout toggle
+- **Fullscreen Mode**: Now properly hides all UI elements (status bar, control panel, info modal)
+
+### Fixed
+- ✅ Language selection locked during transcription to prevent crashes
+- ✅ Dropdown menu text visibility in dark theme
+- ✅ Control panel hide/show functionality (H key)
+- ✅ Text color in light theme for better readability
+- ✅ Text color differentiation: New text is prominent, old text fades
+- ✅ Display mode default settings and typography auto-application
+- ✅ Info modal positioning and content display
+- ✅ Microphone refresh button layout issues
+
+### Documentation
+- Added comprehensive section on language selection and API limitations
+- Added troubleshooting guide for language-related issues
+- Updated README with detailed information about ElevenLabs API behavior
+- Added technical background on how `language_code` parameter works
+
+### Technical
+- Improved logging for language code debugging
+- Enhanced error handling and user feedback
+- Better UI/UX with improved spacing and alignment
+- Optimized text rendering with unified lines array
+- Direct DOM updates to prevent text blinking
+
+---
+
 ## [1.0.0] - 2025-01-15
 
 ### Added

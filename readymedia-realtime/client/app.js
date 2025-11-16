@@ -18,38 +18,45 @@ class ReadyMediaRealtime {
         // Settings
         this.settings = this.loadSettings();
         
-        // Transcripts
-        this.committedTranscripts = [];
-        this.partialTranscript = '';
-        this.sessionTranscripts = []; // Store transcripts for current session
+        // Transcripts - unified lines array
+        // lines[0] = øverste linje, lines[lines.length - 1] = nederste linje (partial)
+        this.lines = []; // Array of { text: string, isPartial: boolean, timestamp: number, language?: string }
+        this.sessionTranscripts = []; // Store transcripts for current session (for saving)
         
         // Display mode configuration
         this.displayModes = {
             'fullscreen-short': {
                 layout: 'fullscreen',
-                maxLines: 7,
+                maxLines: 8, // Max 8 lines for teleprompter view
                 activeLines: 2,
                 historySeconds: 10,
-                flowType: 'push'
+                flowType: 'push',
+                defaultFont: "'Roboto', sans-serif",
+                defaultFontSize: 'l',
+                defaultLineHeight: '1.3'
             },
             'fullscreen-long': {
                 layout: 'fullscreen',
                 maxLines: 12,
                 activeLines: 3,
                 historySeconds: 25,
-                flowType: 'smoothScroll'
+                flowType: 'smoothScroll',
+                defaultFont: "'Roboto', sans-serif",
+                defaultFontSize: 'm',
+                defaultLineHeight: '1.5'
             },
             'captions-lower': {
                 layout: 'bottomStrip',
-                maxLines: 4,
+                maxLines: 3, // Max 3 lines (optimal 2-3)
                 activeLines: 2,
                 historySeconds: 6,
-                flowType: 'push'
+                flowType: 'push',
+                showPartial: false, // Don't show partial/live text in captions mode
+                defaultFont: "'Open Sans', sans-serif",
+                defaultFontSize: 'xs',
+                defaultLineHeight: '1.2'
             }
         };
-        
-        // Line timestamps for history management
-        this.lineTimestamps = [];
         
         // DOM elements
         this.initElements();
@@ -68,10 +75,27 @@ class ReadyMediaRealtime {
     }
     
     startPeriodicCleanup() {
-        // Clean up old lines every 5 seconds
+        // Clean up old lines every 5 seconds, but only if there are lines to clean
         setInterval(() => {
-            if (this.committedTranscripts.length > 0) {
-                this.renderCommittedTranscripts();
+            if (this.lines.length > 0) {
+                const displayMode = this.settings.displayMode || 'fullscreen-long';
+                const config = this.displayModes[displayMode];
+                if (!config) return;
+                
+                const now = Date.now();
+                const historyMs = config.historySeconds * 1000;
+                
+                // Check if we need to remove old lines
+                const needsCleanup = this.lines.some((line, index) => {
+                    if (line.isPartial) return false;
+                    const age = now - line.timestamp;
+                    return age >= historyMs;
+                });
+                
+                // Only re-render if cleanup is needed
+                if (needsCleanup || this.lines.length > config.maxLines) {
+                    this.renderLines();
+                }
             }
         }, 5000);
     }
@@ -170,13 +194,15 @@ class ReadyMediaRealtime {
             // Don't allow language change while recording
             if (this.isRecording) {
                 // Revert to previous value
-                this.languageSelect.value = this.settings.languageCode || '';
+                this.languageSelect.value = this.settings.languageCode || 'en';
                 return;
             }
             
-            this.settings.languageCode = e.target.value;
+            // Handle empty string as auto-detect, otherwise use selected value or default to English
+            const selectedValue = e.target.value;
+            this.settings.languageCode = selectedValue === '' ? '' : (selectedValue || 'en');
             // Update UI language based on selected language (or English for auto-detect)
-            this.settings.uiLanguage = e.target.value || 'en';
+            this.settings.uiLanguage = selectedValue || 'en';
             this.saveSettings();
             this.updateUI();
         });
@@ -449,10 +475,26 @@ class ReadyMediaRealtime {
             // Add language_code if specified (empty string = auto-detect)
             let wsUrl = `wss://api.elevenlabs.io/v1/speech-to-text/realtime?model_id=scribe_v2_realtime&audio_format=pcm_48000&commit_strategy=manual&token=${encodeURIComponent(this.token)}`;
             
-            // Add language_code parameter if a specific language is selected
-            if (this.settings.languageCode) {
+            // Add language_code parameter
+            // IMPORTANT: According to ElevenLabs documentation, language_code specifies the EXPECTED language of the audio
+            // However, the API may still transcribe in the language that is actually spoken, not necessarily the expected language
+            // This is a known limitation/behavior of the Scribe v2 Realtime API
+            // If languageCode is empty, don't send the parameter (auto-detect)
+            // If languageCode is set, send it to tell the model what language to expect
+            if (this.settings.languageCode && this.settings.languageCode.trim() !== '') {
                 wsUrl += `&language_code=${encodeURIComponent(this.settings.languageCode)}`;
+                console.log('🌍 Language code set to:', this.settings.languageCode, '(expects audio in this language)');
+                console.log('⚠️  NOTE: API may still transcribe in the language actually spoken, not the expected language');
+            } else {
+                console.log('🌍 Language code: AUTO-DETECT (will detect language from audio)');
             }
+            
+            // Log current settings for debugging
+            console.log('📋 Current settings:', {
+                languageCode: this.settings.languageCode,
+                uiLanguage: this.settings.uiLanguage,
+                displayMode: this.settings.displayMode
+            });
             
             console.log('Connecting to WebSocket:', wsUrl.substring(0, 150) + '...');
             console.log('Token (first 20 chars):', this.token?.substring(0, 20) + '...');
@@ -639,10 +681,20 @@ class ReadyMediaRealtime {
                 break;
                 
             case 'partial_transcript':
+                console.log('📝 Partial transcript received:', {
+                    text: data.text,
+                    detected_language: data.language_code,
+                    expected_language: this.settings.languageCode || 'auto-detect'
+                });
                 this.updatePartialTranscript(data.text, data.language_code);
                 break;
                 
             case 'committed_transcript':
+                console.log('✅ Committed transcript received:', {
+                    text: data.text,
+                    detected_language: data.language_code,
+                    expected_language: this.settings.languageCode || 'auto-detect'
+                });
                 this.addCommittedTranscript(data.text, data.language_code);
                 break;
                 
@@ -683,11 +735,106 @@ class ReadyMediaRealtime {
     }
     
     updatePartialTranscript(text, languageCode) {
-        this.partialTranscript = text;
-        this.partialText.textContent = text;
+        const displayMode = this.settings.displayMode || 'fullscreen-long';
+        const config = this.displayModes[displayMode];
+        const now = Date.now();
+        
+        // For Captions Lower: Show partial text if we have no committed lines yet (for low latency)
+        // Once we have committed lines, we'll only show those
+        if (displayMode === 'captions-lower' && config && !config.showPartial) {
+            // Check if we have any committed lines
+            const hasCommittedLines = this.lines.some(line => !line.isPartial);
+            
+            // If we have committed lines, don't show partial (less distracting)
+            // If we have no committed lines yet, show partial for low latency
+            if (hasCommittedLines) {
+                // Just update language if needed, but don't render partial text
+                if (languageCode) {
+                    this.updateLanguageDisplay(languageCode);
+                }
+                return;
+            }
+            
+            // No committed lines yet - show partial for immediate feedback
+            if (this.lines.length === 0 || !this.lines[this.lines.length - 1].isPartial) {
+                // Add new partial line
+                this.lines.push({
+                    text: text,
+                    isPartial: true,
+                    timestamp: now,
+                    language: languageCode
+                });
+                // Need full render when adding new line
+                this.renderLines();
+            } else {
+                // Update existing partial line
+                const lastLine = this.lines[this.lines.length - 1];
+                if (lastLine.text !== text) {
+                    lastLine.text = text;
+                    lastLine.timestamp = now;
+                    if (languageCode) {
+                        lastLine.language = languageCode;
+                    }
+                    // Only update the last line element, not the entire DOM
+                    this.updatePartialLineOnly(text);
+                }
+            }
+            
+            if (languageCode) {
+                this.updateLanguageDisplay(languageCode);
+            }
+            return;
+        }
+        
+        // Normal mode: Always show partial
+        // Ensure we have a partial line at the end
+        if (this.lines.length === 0 || !this.lines[this.lines.length - 1].isPartial) {
+            // Add new partial line
+            this.lines.push({
+                text: text,
+                isPartial: true,
+                timestamp: now,
+                language: languageCode
+            });
+            // Need full render when adding new line
+            this.renderLines();
+        } else {
+            // Update existing partial line - only update the text, don't re-render everything
+            const lastLine = this.lines[this.lines.length - 1];
+            if (lastLine.text !== text) {
+                lastLine.text = text;
+                lastLine.timestamp = now;
+                if (languageCode) {
+                    lastLine.language = languageCode;
+                }
+                // Only update the last line element, not the entire DOM
+                this.updatePartialLineOnly(text);
+            }
+        }
         
         if (languageCode) {
             this.updateLanguageDisplay(languageCode);
+        }
+    }
+    
+    updatePartialLineOnly(text) {
+        // Find the last line element and update only that
+        const lineElements = this.committedTexts.querySelectorAll('.transcript-line');
+        if (lineElements.length > 0) {
+            const lastElement = lineElements[lineElements.length - 1];
+            if (lastElement && lastElement.classList.contains('partial')) {
+                lastElement.textContent = text;
+            }
+        }
+        
+        // Auto-scroll for Fullscreen modes (teleprompter style)
+        const displayMode = this.settings.displayMode || 'fullscreen-long';
+        if (displayMode === 'fullscreen-short' || displayMode === 'fullscreen-long') {
+            const container = this.textContainer;
+            if (container) {
+                // Scroll to bottom to show latest text
+                container.scrollTop = container.scrollHeight;
+            }
         }
     }
     
@@ -695,25 +842,80 @@ class ReadyMediaRealtime {
         if (!text || !text.trim()) return;
         
         const now = Date.now();
-        const transcriptEntry = {
-            id: now,
-            text: text.trim(),
-            language: languageCode,
-            timestamp: new Date(now)
-        };
+        const displayMode = this.settings.displayMode || 'fullscreen-long';
+        const config = this.displayModes[displayMode];
         
-        this.committedTranscripts.push(transcriptEntry);
-        this.lineTimestamps.push(now);
+        // For Captions Lower: Remove partial line if it exists, then add committed
+        if (displayMode === 'captions-lower' && config && !config.showPartial) {
+            // Remove any partial line
+            if (this.lines.length > 0 && this.lines[this.lines.length - 1].isPartial) {
+                this.lines.pop();
+            }
+            
+            // Add new committed line
+            this.lines.push({
+                text: text.trim(),
+                isPartial: false,
+                timestamp: now,
+                language: languageCode
+            });
+            
+            // Add to session transcripts for saving
+            this.sessionTranscripts.push({
+                id: now,
+                text: text.trim(),
+                language: languageCode,
+                timestamp: new Date(now)
+            });
+            
+            // Don't add partial line for captions mode
+        } else {
+            // Normal mode: Convert partial to committed and add new partial
+            if (this.lines.length > 0 && this.lines[this.lines.length - 1].isPartial) {
+                // Make the last line committed
+                this.lines[this.lines.length - 1].isPartial = false;
+                this.lines[this.lines.length - 1].text = text.trim();
+                this.lines[this.lines.length - 1].timestamp = now;
+                if (languageCode) {
+                    this.lines[this.lines.length - 1].language = languageCode;
+                }
+                
+                // Add to session transcripts for saving
+                this.sessionTranscripts.push({
+                    id: now,
+                    text: text.trim(),
+                    language: languageCode,
+                    timestamp: new Date(now)
+                });
+            } else {
+                // No partial line, add as new committed line
+                this.lines.push({
+                    text: text.trim(),
+                    isPartial: false,
+                    timestamp: now,
+                    language: languageCode
+                });
+                
+                // Add to session transcripts for saving
+                this.sessionTranscripts.push({
+                    id: now,
+                    text: text.trim(),
+                    language: languageCode,
+                    timestamp: new Date(now)
+                });
+            }
+            
+            // Add new empty partial line at the end
+            this.lines.push({
+                text: '',
+                isPartial: true,
+                timestamp: now,
+                language: languageCode
+            });
+        }
         
-        // Also add to session transcripts for saving
-        this.sessionTranscripts.push(transcriptEntry);
-        
-        // Clear partial
-        this.partialTranscript = '';
-        this.partialText.textContent = '';
-        
-        // Render with new display mode logic
-        this.renderCommittedTranscripts();
+        // Render with cleanup
+        this.renderLines();
         
         // Update language
         if (languageCode) {
@@ -721,55 +923,155 @@ class ReadyMediaRealtime {
         }
     }
     
-    renderCommittedTranscripts() {
-        const displayMode = this.settings.displayMode || 'fullscreen-short';
+    renderLines() {
+        const displayMode = this.settings.displayMode || 'fullscreen-long';
         const config = this.displayModes[displayMode];
         if (!config) return;
         
         const now = Date.now();
         const historyMs = config.historySeconds * 1000;
         
-        // Remove old lines based on time
-        const validIndices = [];
-        for (let i = 0; i < this.committedTranscripts.length; i++) {
-            const age = now - this.lineTimestamps[i];
-            if (age < historyMs) {
-                validIndices.push(i);
+        // For Captions Lower: Only show committed lines, strict limit to maxLines
+        // For Fullscreen modes: Keep all lines but only show maxLines (teleprompter style)
+        if (displayMode === 'captions-lower') {
+            // Captions Lower: Prefer committed lines, but allow one partial if no committed yet
+            const committedLines = this.lines.filter(line => !line.isPartial);
+            const partialLines = this.lines.filter(line => line.isPartial);
+            
+            // If we have committed lines, remove all partial (less distracting)
+            // If we have no committed lines, keep one partial for low latency
+            if (committedLines.length > 0) {
+                this.lines = committedLines; // Only committed lines
+            } else if (partialLines.length > 0) {
+                // No committed yet - keep only the latest partial for low latency
+                this.lines = [partialLines[partialLines.length - 1]];
+            } else {
+                this.lines = [];
+            }
+            
+            // Remove old lines based on time (but be more lenient - keep lines longer)
+            this.lines = this.lines.filter(line => {
+                const age = now - line.timestamp;
+                return age < (historyMs * 2); // Keep lines longer to avoid losing content
+            });
+            
+            // Strict limit to maxLines
+            if (this.lines.length > config.maxLines) {
+                const removeCount = this.lines.length - config.maxLines;
+                this.lines = this.lines.slice(removeCount); // Remove oldest from top
+            }
+        } else {
+            // Fullscreen modes: Keep all lines, but only show maxLines (teleprompter)
+            // Remove old lines based on time only if they're way too old
+            const partialLine = this.lines.length > 0 && this.lines[this.lines.length - 1].isPartial 
+                ? this.lines.pop() 
+                : null;
+            
+            // Only remove lines that are way too old (double the history time)
+            this.lines = this.lines.filter(line => {
+                if (line.isPartial) return true;
+                const age = now - line.timestamp;
+                return age < (historyMs * 2); // Keep lines longer for teleprompter
+            });
+            
+            // Restore partial line
+            if (partialLine) {
+                this.lines.push(partialLine);
             }
         }
         
-        // Keep only valid transcripts
-        this.committedTranscripts = validIndices.map(i => this.committedTranscripts[i]);
-        this.lineTimestamps = validIndices.map(i => this.lineTimestamps[i]);
+        // Render all lines
+        // lines[0] = øverste, lines[lines.length - 1] = nederste (partial)
+        const totalLines = this.lines.length;
         
-        // Limit to maxLines
-        if (this.committedTranscripts.length > config.maxLines) {
-            const removeCount = this.committedTranscripts.length - config.maxLines;
-            this.committedTranscripts = this.committedTranscripts.slice(removeCount);
-            this.lineTimestamps = this.lineTimestamps.slice(removeCount);
-        }
+        // Render all lines (for Captions Lower, we've already filtered appropriately)
+        const linesToRender = this.lines;
         
-        // Render lines with color based on activeLines
-        const lines = this.committedTranscripts.map((entry, index) => {
-            const isActive = index >= this.committedTranscripts.length - config.activeLines;
-            const lineClass = isActive ? 'transcript-line active' : 'transcript-line history';
-            return `<div class="${lineClass}">${this.escapeHtml(entry.text)}</div>`;
+        const htmlLines = linesToRender.map((line, index) => {
+            // Determine if line is active (nederste activeLines linjer)
+            const isActive = index >= linesToRender.length - config.activeLines;
+            const isPartial = line.isPartial;
+            
+            // Calculate opacity for fading effect (only for committed lines)
+            let opacity = 1;
+            if (!isPartial && !isActive) {
+                // Calculate age-based opacity for history lines
+                const age = now - line.timestamp;
+                const maxAge = historyMs;
+                const fadeStart = maxAge * 0.5; // Start fading at 50% of max age
+                if (age > fadeStart) {
+                    const fadeProgress = (age - fadeStart) / (maxAge - fadeStart);
+                    opacity = Math.max(0.3, 1 - fadeProgress); // Fade from 1.0 to 0.3
+                }
+            }
+            
+            let lineClass = 'transcript-line';
+            if (isPartial) {
+                lineClass += ' partial';
+            } else if (isActive) {
+                lineClass += ' active';
+            } else {
+                lineClass += ' history';
+            }
+            
+            const text = line.text || '';
+            const style = !isPartial && !isActive ? `style="opacity: ${opacity.toFixed(2)}"` : '';
+            return `<div class="${lineClass}" ${style}>${this.escapeHtml(text)}</div>`;
         });
         
-        this.committedTexts.innerHTML = lines.join('');
+        // For Captions Lower: Only show the last maxLines (typically 2-3)
+        // For Fullscreen modes: Show all lines but scroll to show the latest
+        let linesToShow = htmlLines;
+        if (displayMode === 'captions-lower') {
+            // Only show the last maxLines (typically 2-3)
+            // This ensures nederste linje never moves up
+            // If we have a partial (no committed yet), show it plus up to maxLines-1 committed
+            const hasPartial = linesToRender.some(line => line.isPartial);
+            
+            if (hasPartial && linesToShow.length > 1) {
+                // Show partial + up to maxLines-1 committed (if any)
+                // Partial is always last, so we show the last maxLines
+                if (linesToShow.length > config.maxLines) {
+                    linesToShow = linesToShow.slice(-config.maxLines);
+                }
+            } else {
+                // Only committed lines - show max maxLines
+                if (linesToShow.length > config.maxLines) {
+                    linesToShow = linesToShow.slice(-config.maxLines);
+                }
+            }
+        }
         
-        // Handle scrolling based on flowType
-        if (config.flowType === 'smoothScroll') {
-            // Smooth scroll to keep active lines visible
+        // Update both containers (we'll merge them visually)
+        this.committedTexts.innerHTML = linesToShow.join('');
+        this.partialText.textContent = ''; // Clear old partial text element
+        
+        // Handle scrolling based on flowType and mode
+        if (displayMode === 'captions-lower') {
+            // Captions Lower: NO scrolling, nederste linje skal aldri flytte seg
+            // Container should stay fixed at bottom, showing only last maxLines
+            const container = this.textContainer;
+            if (container) {
+                container.scrollTop = 0; // Keep at top, showing only last lines
+            }
+        } else if (config.flowType === 'smoothScroll') {
+            // Fullscreen Long: Always scroll to bottom to show latest text (teleprompter style)
             setTimeout(() => {
-                this.textContainer.scrollTo({
-                    top: this.textContainer.scrollHeight,
-                    behavior: 'smooth'
-                });
-            }, 50);
+                const container = this.textContainer;
+                if (container) {
+                    // Always scroll to bottom to show latest text
+                    container.scrollTop = container.scrollHeight;
+                }
+            }, 10);
         } else {
-            // Push mode - instant scroll
-            this.textContainer.scrollTop = this.textContainer.scrollHeight;
+            // Fullscreen Short: Teleprompter mode - always scroll to show latest text
+            setTimeout(() => {
+                const container = this.textContainer;
+                if (container) {
+                    // Always scroll to bottom to show latest text (teleprompter style)
+                    container.scrollTop = container.scrollHeight;
+                }
+            }, 10);
         }
     }
     
@@ -786,9 +1088,9 @@ class ReadyMediaRealtime {
             'it': t.language === 'Language' ? 'Italian' : (t.language === 'Språk' ? 'Italiensk' : (t.language === 'Sprog' ? 'Italiensk' : 'Italian'))
         };
         
-        // Only show detected language if auto-detect is enabled
+        // Only show detected language if auto-detect is enabled (empty string)
         // If a language is selected, hide the detected language display (it's shown in dropdown)
-        if (!this.settings.languageCode) {
+        if (!this.settings.languageCode || this.settings.languageCode.trim() === '') {
             const displayName = languageNames[languageCode] || languageCode.toUpperCase();
             this.detectedLanguage.textContent = `${t.detected}: ${displayName}`;
             this.detectedLanguage.style.display = 'block';
@@ -799,9 +1101,7 @@ class ReadyMediaRealtime {
     }
     
     clearAllText() {
-        this.committedTranscripts = [];
-        this.partialTranscript = '';
-        this.lineTimestamps = [];
+        this.lines = [];
         this.committedTexts.innerHTML = '';
         this.partialText.textContent = '';
         // Note: sessionTranscripts are kept for saving even after clearing display
@@ -875,6 +1175,32 @@ class ReadyMediaRealtime {
         const config = this.displayModes[mode];
         this.settings.displayMode = mode;
         this.settings.layout = config.layout;
+        
+        // Auto-set typography defaults for specific modes
+        if (config.defaultFont && config.defaultFontSize && config.defaultLineHeight) {
+            this.settings.fontFamily = config.defaultFont;
+            this.settings.fontSize = config.defaultFontSize;
+            this.settings.lineHeight = config.defaultLineHeight;
+            
+            // Update UI elements
+            if (this.fontFamily) {
+                this.fontFamily.value = config.defaultFont;
+            }
+            if (this.fontSize) {
+                this.fontSize.value = config.defaultFontSize;
+                document.body.setAttribute('data-font-size', config.defaultFontSize);
+            }
+            if (this.lineHeight) {
+                this.lineHeight.value = config.defaultLineHeight;
+                if (this.lineHeightValue) {
+                    this.lineHeightValue.textContent = config.defaultLineHeight;
+                }
+            }
+            
+            // Apply typography settings
+            this.applyTypography();
+        }
+        
         this.saveSettings();
         
         // Apply layout
@@ -887,12 +1213,12 @@ class ReadyMediaRealtime {
         }
         
         // Re-render with new mode
-        this.renderCommittedTranscripts();
+        this.renderLines();
     }
     
     toggleDisplayMode() {
         const modes = ['fullscreen-short', 'fullscreen-long', 'captions-lower'];
-        const current = this.settings.displayMode || 'fullscreen-short';
+        const current = this.settings.displayMode || 'fullscreen-long';
         const currentIndex = modes.indexOf(current);
         const nextIndex = (currentIndex + 1) % modes.length;
         this.setDisplayMode(modes[nextIndex]);
@@ -1025,10 +1351,7 @@ class ReadyMediaRealtime {
             this.themeSelect.value = theme;
         }
         
-        // Layout
-        document.body.setAttribute('data-layout', this.settings.layout);
-        this.updateLayoutButton();
-        
+        // Layout (will be set by setDisplayMode below)
         // Font size
         document.body.setAttribute('data-font-size', this.settings.fontSize);
         this.fontSize.value = this.settings.fontSize;
@@ -1040,12 +1363,19 @@ class ReadyMediaRealtime {
         this.applyTypography();
         
         // Display mode (applies layout automatically)
-        const displayMode = this.settings.displayMode || 'fullscreen-short';
-        this.setDisplayMode(displayMode);
+        // Force to fullscreen-long as default if not set or invalid
+        if (!this.settings.displayMode || !['fullscreen-short', 'fullscreen-long', 'captions-lower'].includes(this.settings.displayMode)) {
+            this.settings.displayMode = 'fullscreen-long';
+        }
+        // Always set displayMode to ensure it's applied correctly
+        this.setDisplayMode(this.settings.displayMode);
+        // Save settings after setting display mode
+        this.saveSettings();
         
         // Language selection
         if (this.languageSelect) {
-            this.settings.languageCode = this.settings.languageCode || '';
+            // Default to English if not set
+            this.settings.languageCode = this.settings.languageCode || 'en';
             this.settings.uiLanguage = this.settings.uiLanguage || (this.settings.languageCode || 'en');
             this.languageSelect.value = this.settings.languageCode;
         }
@@ -1437,13 +1767,13 @@ class ReadyMediaRealtime {
     loadSettings() {
         const defaults = {
             theme: 'dark',
-            displayMode: 'fullscreen-short',
+            displayMode: 'fullscreen-long',
             layout: 'fullscreen',
             fontSize: 'm',
-            fontFamily: "'Inter', sans-serif",
-            lineHeight: '1.4',
+            fontFamily: "'Roboto', sans-serif",
+            lineHeight: '1.5',
             audioDeviceId: '',
-            languageCode: '', // Empty string = auto-detect
+            languageCode: 'en', // Default to English (empty string = auto-detect)
             uiLanguage: 'en' // Default UI language is English
         };
         
@@ -1453,6 +1783,18 @@ class ReadyMediaRealtime {
             // Ensure uiLanguage is set (for backward compatibility)
             if (!loaded.uiLanguage) {
                 loaded.uiLanguage = loaded.languageCode || 'en';
+            }
+            // Ensure displayMode is set to default if not present or invalid
+            // Migrate to fullscreen-long as the new default
+            if (!loaded.displayMode || !['fullscreen-short', 'fullscreen-long', 'captions-lower'].includes(loaded.displayMode)) {
+                loaded.displayMode = defaults.displayMode;
+            }
+            // Migration: If displayMode is the old default 'fullscreen-short', migrate to new default 'fullscreen-long'
+            // This ensures all users get the new default on first load after update
+            if (loaded.displayMode === 'fullscreen-short') {
+                // Check if this is likely the old default (no explicit user choice)
+                // We'll migrate it to the new default
+                loaded.displayMode = 'fullscreen-long';
             }
             return loaded;
         } catch {
@@ -1564,7 +1906,7 @@ class ReadyMediaRealtime {
         }
         const autoOption = document.querySelector('#languageSelect option[value=""]');
         if (autoOption) autoOption.textContent = t.autoDetection;
-        if (this.detectedLanguage && !this.settings.languageCode) {
+        if (this.detectedLanguage && (!this.settings.languageCode || this.settings.languageCode.trim() === '')) {
             this.detectedLanguage.textContent = t.autoDetectionActive;
         }
         

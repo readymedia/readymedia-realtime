@@ -1,4 +1,4 @@
-# 🎙️ ReadyMedia Realtime v5.0.0
+# 🎙️ ReadyMedia Realtime v6.0.0
 
 **Universell sanntidsteksting for undervisningsrom**
 
@@ -7,7 +7,7 @@ En nettbasert løsning for automatisk sanntidsteksting av tale i klasserom, audi
 ## ✨ Funksjoner
 
 - 🎤 **Sanntidstranskripsjon** med under 250ms latency
-- 🌍 **Automatisk språkdeteksjon** (norsk, engelsk, og mange flere)
+- 🌍 **Språkvalg**: Velg mellom norsk, engelsk, tysk, fransk, svensk, dansk eller auto-deteksjon
 - 🎨 **Tema**: Lys og mørk modus med høy kontrast
 - 📐 **Layout**: Fullskjerm eller bunnstripe (2-4 linjer)
 - 🔤 **Typografi**: Justerbar font, størrelse og linjeavstand
@@ -85,6 +85,11 @@ Naviger til: `http://localhost:3000`
    - Bruk kontrollpanelet til å justere font, tema og layout
    - Alle innstillinger lagres automatisk
 
+4. **Velg språk**
+   - Velg ønsket språk fra "Language"-menyen
+   - "Auto-detection" vil automatisk detektere språket som snakkes
+   - Se [Språkvalg og API-begrensninger](#-språkvalg-og-api-begrensninger) nedenfor for viktig informasjon
+
 ### ⌨️ Tastatursnarveier
 
 | Tast | Handling |
@@ -128,6 +133,53 @@ Naviger til: `http://localhost:3000`
 - XXL: 88px (store rom)
 
 **Linjeavstand:** 1.2 - 1.8 (standard: 1.4)
+
+## 🌍 Språkvalg og API-begrensninger
+
+### Hvordan språkvalg fungerer
+
+ReadyMedia Realtime bruker ElevenLabs Scribe v2 Realtime API for transkribering. Språkvalget fungerer som følger:
+
+#### Auto-deteksjon (anbefalt)
+- Når "Auto-detection" er valgt, detekterer APIet automatisk språket som snakkes
+- APIet transkriberer i det språket som faktisk snakkes
+- Fungerer best når du snakker ett språk konsekvent
+
+#### Spesifikt språk valgt
+- Når du velger et spesifikt språk (f.eks. "Norwegian" eller "English"), sendes dette som en hint til APIet
+- **Viktig:** `language_code`-parameteren fungerer som en **forventning/hint**, ikke en hard constraint
+- APIet kan fortsatt transkribere i språket som faktisk snakkes, selv om et annet språk er valgt
+- Dette er en kjent oppførsel i ElevenLabs Scribe v2 Realtime API
+
+### Praktiske anbefalinger
+
+1. **For best resultat:**
+   - Bruk "Auto-detection" når du snakker i ett språk
+   - APIet vil automatisk detektere og transkribere i riktig språk
+
+2. **Hvis du opplever inkonsistente resultater:**
+   - Sjekk konsollen (F12) for å se hvilket språk som sendes til APIet
+   - Sjekk hvilket `detected_language` som kommer tilbake fra APIet
+   - Dette kan hjelpe med å dokumentere problemet
+
+3. **For dokumentasjon:**
+   - Konsollen logger både `expected_language` (det du valgte) og `detected_language` (det APIet faktisk detekterte)
+   - Dette kan være nyttig for å forstå APIets oppførsel
+
+### Teknisk bakgrunn
+
+ElevenLabs Scribe v2 Realtime API prioriterer **detektert språk** over **forventet språk** i mange tilfeller. Dette betyr at:
+
+- Hvis du setter "Norwegian" men snakker engelsk, kan APIet transkribere på engelsk
+- Hvis du setter "English" men snakker norsk, kan APIet transkribere på norsk
+- Dette er ikke en bug i ReadyMedia Realtime, men en begrensning i ElevenLabs API
+
+### Kontakt ElevenLabs
+
+Hvis du opplever problemer med språkvalg, kan du:
+- Kontakte ElevenLabs support for å bekrefte om dette er forventet oppførsel
+- Rapportere inkonsistente resultater med logging fra konsollen
+- Se [ElevenLabs dokumentasjon](https://elevenlabs.io/docs) for mer informasjon
 
 ## 🏗️ Arkitektur
 

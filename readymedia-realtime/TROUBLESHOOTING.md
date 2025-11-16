@@ -144,6 +144,71 @@ Vanlige problemer og løsninger.
 
 ---
 
+## 🌍 Språkproblemer
+
+### Problem: Tekst kommer på feil språk
+
+**Symptomer:**
+- Du velger "Norwegian" men får engelsk tekst
+- Du velger "English" men får norsk tekst
+- Språket endrer seg underveis i transkriberingen
+
+**Forklaring:**
+ElevenLabs Scribe v2 Realtime API bruker `language_code`-parameteren som en **hint/forventning**, ikke som en hard constraint. APIet kan fortsatt transkribere i språket som faktisk snakkes, selv om et annet språk er valgt.
+
+**Løsninger:**
+
+1. **Bruk Auto-detection:**
+   - Velg "Auto-detection" fra Language-menyen
+   - APIet vil automatisk detektere språket som snakkes
+   - Dette gir ofte best resultat
+
+2. **Sjekk konsollen for debugging:**
+   - Åpne konsollen (F12)
+   - Se etter logger som viser:
+     - `🌍 Language code set to: [språk]` - Hva som sendes til APIet
+     - `detected_language: [språk]` - Hva APIet faktisk detekterte
+     - `expected_language: [språk]` - Hva du valgte
+   - Dette kan hjelpe med å forstå APIets oppførsel
+
+3. **Snakk konsekvent:**
+   - Hvis du blander språk, kan APIet bli forvirret
+   - Prøv å snakke i ett språk om gangen
+
+4. **Kontakt ElevenLabs:**
+   - Dette er en kjent oppførsel i ElevenLabs API
+   - Hvis du trenger hard constraint på språk, kontakt ElevenLabs support
+   - Se [ElevenLabs dokumentasjon](https://elevenlabs.io/docs) for mer informasjon
+
+### Problem: Språkvalg endres ikke når jeg bytter
+
+**Løsninger:**
+1. Språkvalg kan kun endres når transkribering er stoppet
+   - Stopp transkribering først (klikk "Stop transcription")
+   - Velg nytt språk
+   - Start transkribering på nytt
+
+2. Sjekk at språkvalget faktisk er lagret:
+   - Velg språk
+   - Last siden på nytt
+   - Sjekk at valget er bevart
+
+3. Sjekk konsollen for feilmeldinger
+
+### Problem: Auto-detection fungerer ikke som forventet
+
+**Løsninger:**
+1. Vent 2-3 sekunder etter at du begynner å snakke
+   - APIet trenger tid til å detektere språk
+
+2. Snakk tydelig og i ett språk om gangen
+   - Blanding av språk kan forvirre deteksjonen
+
+3. Sjekk at du faktisk snakker (ikke bare støy)
+   - APIet kan ha problemer med å detektere språk i støy
+
+---
+
 ## 🔧 Server-problemer
 
 ### Problem: Server starter ikke
